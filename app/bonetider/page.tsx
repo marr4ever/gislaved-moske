@@ -1,13 +1,11 @@
 import { Header } from "@/components/header"
 import { MonthlyPrayerTimes } from "@/components/monthly-prayer-times"
-import { AccurateTimesNotice } from "@/components/accurate-times-notice"
 
 export default function PrayerTimesPage() {
   return (
     <main>
       <Header />
       <div className="py-8 container mx-auto px-4">
-        <AccurateTimesNotice />
         <MonthlyPrayerTimes />
       </div>
       <footer className="fixed bottom-0 w-full bg-blue-600 text-white text-center text-sm py-2">

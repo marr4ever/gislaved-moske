@@ -14,8 +14,8 @@ export default function TVPage() {
           <div className="flex flex-col items-center justify-center min-h-[80vh] gap-12 py-8">
             <TVClock />
             <div className="w-full max-w-7xl">
-              <AccurateTimesNotice />
               <CurrentDayPrayers />
+              <AccurateTimesNotice />
             </div>
           </div>
         </div>

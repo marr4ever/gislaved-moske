@@ -4,7 +4,6 @@ import { MonthlyPrayerTimes } from "@/components/monthly-prayer-times"
 import { TVClock } from "@/components/tv-clock"
 import { CurrentDayPrayers } from "@/components/current-day-prayers"
 import { RotatingBackground } from "@/components/rotating-background"
-import { AccurateTimesNotice } from "@/components/accurate-times-notice"
 
 export default function Home() {
   return (
@@ -13,7 +12,6 @@ export default function Home() {
       <div className="relative z-10 bg-black/30 min-h-screen">
         <Header />
         <div className="container mx-auto px-4 py-8">
-          <AccurateTimesNotice />
           <div className="mb-12">
             <TVClock />
           </div>
