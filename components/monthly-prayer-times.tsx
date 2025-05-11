@@ -55,9 +55,6 @@ export function MonthlyPrayerTimes() {
               failed.push(i + 1)
               usedFallback = true
             }
-
-            // Add a small delay between requests to avoid rate limiting
-            await new Promise((resolve) => setTimeout(resolve, 1000))
           } catch (err) {
             console.error(`Error fetching data for month ${i + 1}:`, err)
             failed.push(i + 1)
@@ -65,9 +62,6 @@ export function MonthlyPrayerTimes() {
 
             // Use empty array for failed months
             monthlyData[i] = []
-
-            // Add a longer delay after an error
-            await new Promise((resolve) => setTimeout(resolve, 2000))
           }
         }
 
@@ -215,9 +209,9 @@ export function MonthlyPrayerTimes() {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold">
                     {new Date(2025, monthIndex).toLocaleString("sv-SE", { month: "long" })} 2025
-                    {failedMonths.includes(monthIndex + 1) && (
+                    {/*failedMonths.includes(monthIndex + 1) && (
                       <span className="ml-2 text-sm text-yellow-600 font-normal">(Uppskattade tider)</span>
-                    )}
+                    )*/}
                   </h2>
                   <Button
                     variant="outline"
@@ -257,6 +251,7 @@ export function MonthlyPrayerTimes() {
                                 <div className="text-sm text-gray-500 font-arabic">{day.hijriDate}</div>
                               </TableCell>
                               {day.prayers.map((prayer, prayerIndex) => {
+                                // Only show Jomoa on Fridays for Dhuhr prayer
                                 const isPrayerJomoa = prayer.name === "Dhuhr" && isFriday
 
                                 return (

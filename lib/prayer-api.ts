@@ -1,4 +1,4 @@
-import type { PrayerAPIResponse, DailyPrayers } from "@/types/prayer"
+import type { DailyPrayers } from "@/types/prayer"
 import { translations } from "@/lib/translations"
 import { getAccuratePrayerTimesForDate, getAccuratePrayerTimesForMonth } from "@/lib/accurate-prayer-times"
 
@@ -106,7 +106,7 @@ export function getSwedishPrayerNameForDay(prayerName: string, date: Date): stri
 }
 
 export async function fetchPrayerTimes(date: Date): Promise<DailyPrayers> {
-  // First check if we have accurate prayer times for this date
+  // Always use accurate prayer times from our local data
   const accurateTimes = getAccuratePrayerTimesForDate(date)
   if (accurateTimes) {
     console.log(`Using accurate prayer times for ${date.toISOString().split("T")[0]}`)
@@ -134,80 +134,8 @@ export async function fetchPrayerTimes(date: Date): Promise<DailyPrayers> {
     return accurateTimes
   }
 
-  // If not, fall back to API or generated times
-  const year = date.getFullYear()
-  const month = date.getMonth() + 1
-  const day = date.getDate()
-
-  try {
-    const response = await fetch(
-      `https://api.aladhan.com/v1/timings/${day}-${month}-${year}?latitude=${GISLAVED_COORDINATES.latitude}&longitude=${GISLAVED_COORDINATES.longitude}&method=2`,
-    )
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch prayer times: ${response.status} ${response.statusText}`)
-    }
-
-    const text = await response.text()
-    let data: PrayerAPIResponse
-
-    try {
-      data = JSON.parse(text)
-    } catch (error) {
-      console.error("Error parsing JSON:", text)
-      throw new Error("Invalid JSON response from API")
-    }
-
-    const prayers = [
-      {
-        name: "Fajr",
-        arabicName: translations.prayers.fajr.arabic,
-        swedishName: translations.prayers.fajr.swedish,
-        time: formatTime(data.data.timings.Fajr),
-      },
-      {
-        name: "Sunrise",
-        arabicName: translations.prayers.sunrise.arabic,
-        swedishName: translations.prayers.sunrise.swedish,
-        time: formatTime(data.data.timings.Sunrise),
-      },
-      {
-        name: isFriday(date) ? "Jomoa" : "Dhuhr",
-        arabicName: isFriday(date) ? "الجمعة" : translations.prayers.dhuhr.arabic,
-        swedishName: isFriday(date) ? "Jomoa" : translations.prayers.dhuhr.swedish,
-        time: formatTime(data.data.timings.Dhuhr),
-      },
-      {
-        name: "Asr",
-        arabicName: translations.prayers.asr.arabic,
-        swedishName: translations.prayers.asr.swedish,
-        time: formatTime(data.data.timings.Asr),
-      },
-      {
-        name: "Maghrib",
-        arabicName: translations.prayers.maghrib.arabic,
-        swedishName: translations.prayers.maghrib.swedish,
-        time: formatTime(data.data.timings.Maghrib),
-      },
-      {
-        name: "Isha",
-        arabicName: translations.prayers.isha.arabic,
-        swedishName: translations.prayers.isha.swedish,
-        time: formatTime(data.data.timings.Isha),
-      },
-    ]
-
-    return {
-      date: formatDate(data.data.date.gregorian.date),
-      weekday: getSwedishWeekday(new Date(data.data.date.gregorian.date)),
-      weekdayArabic: getArabicWeekday(data.data.date.gregorian.weekday.en),
-      hijriDate: `${data.data.date.hijri.day} ${data.data.date.hijri.month.ar} ${data.data.date.hijri.year}`,
-      prayers,
-    }
-  } catch (error) {
-    console.error("Error in fetchPrayerTimes:", error)
-    return generateFallbackPrayerTimes(date)
-  }
+  // If no accurate times are available, generate fallback times
+  return generateFallbackPrayerTimes(date)
 }
 
 // Generate fallback prayer times for a specific date when the API fails
@@ -299,7 +227,7 @@ function generateFallbackPrayerTimes(date: Date): DailyPrayers {
 }
 
 export async function fetchMonthlyPrayerTimes(year: number, month: number): Promise<DailyPrayers[]> {
-  // First check if we have accurate prayer times for this month
+  // Always use accurate prayer times from our local data
   const accurateTimes = getAccuratePrayerTimesForMonth(year, month)
   if (accurateTimes.length > 0) {
     console.log(`Using accurate prayer times for ${year}-${month}`)
@@ -331,91 +259,8 @@ export async function fetchMonthlyPrayerTimes(year: number, month: number): Prom
     return updatedTimes
   }
 
-  try {
-    // For month 6 (June), use fallback data directly to avoid API issues
-    if (month === 6) {
-      console.log(`Using fallback data for month ${month} due to known API issues`)
-      return generateFallbackMonthlyPrayerTimes(year, month)
-    }
-
-    const response = await fetch(
-      `https://api.aladhan.com/v1/calendar/${year}/${month}?latitude=${GISLAVED_COORDINATES.latitude}&longitude=${GISLAVED_COORDINATES.longitude}&method=2`,
-    )
-
-    if (!response.ok) {
-      console.warn(`API returned error status for month ${month}: ${response.status}`)
-      return generateFallbackMonthlyPrayerTimes(year, month)
-    }
-
-    const text = await response.text()
-    let data
-
-    try {
-      data = JSON.parse(text)
-    } catch (error) {
-      console.error(`Error parsing JSON for month ${month}:`, error)
-      console.log("Using fallback data instead")
-      return generateFallbackMonthlyPrayerTimes(year, month)
-    }
-
-    if (!data || !data.data || !Array.isArray(data.data)) {
-      console.error(`Invalid data structure for month ${month}`)
-      return generateFallbackMonthlyPrayerTimes(year, month)
-    }
-
-    return data.data.map((day: any) => {
-      const date = new Date(day.date.gregorian.date)
-      const isFridayPrayer = date.getDay() === 5
-
-      return {
-        date: formatDate(day.date.gregorian.date),
-        weekday: getSwedishWeekday(date),
-        weekdayArabic: getArabicWeekday(day.date.gregorian.weekday.en),
-        hijriDate: `${day.date.hijri.day} ${day.date.hijri.month.ar} ${day.date.hijri.year}`,
-        prayers: [
-          {
-            name: "Fajr",
-            arabicName: translations.prayers.fajr.arabic,
-            swedishName: translations.prayers.fajr.swedish,
-            time: formatTime(day.timings.Fajr),
-          },
-          {
-            name: "Sunrise",
-            arabicName: translations.prayers.sunrise.arabic,
-            swedishName: translations.prayers.sunrise.swedish,
-            time: formatTime(day.timings.Sunrise),
-          },
-          {
-            name: isFridayPrayer ? "Jomoa" : "Dhuhr",
-            arabicName: isFridayPrayer ? "الجمعة" : translations.prayers.dhuhr.arabic,
-            swedishName: isFridayPrayer ? "Jomoa" : translations.prayers.dhuhr.swedish,
-            time: formatTime(day.timings.Dhuhr),
-          },
-          {
-            name: "Asr",
-            arabicName: translations.prayers.asr.arabic,
-            swedishName: translations.prayers.asr.swedish,
-            time: formatTime(day.timings.Asr),
-          },
-          {
-            name: "Maghrib",
-            arabicName: translations.prayers.maghrib.arabic,
-            swedishName: translations.prayers.maghrib.swedish,
-            time: formatTime(day.timings.Maghrib),
-          },
-          {
-            name: "Isha",
-            arabicName: translations.prayers.isha.arabic,
-            swedishName: translations.prayers.isha.swedish,
-            time: formatTime(day.timings.Isha),
-          },
-        ],
-      }
-    })
-  } catch (error) {
-    console.error("Error in fetchMonthlyPrayerTimes:", error)
-    return generateFallbackMonthlyPrayerTimes(year, month)
-  }
+  // If no accurate times are available, generate fallback times
+  return generateFallbackMonthlyPrayerTimes(year, month)
 }
 
 // Generate fallback prayer times for a month when the API fails
