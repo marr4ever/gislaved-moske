@@ -9,6 +9,7 @@ import { fetchMonthlyPrayerTimes } from "@/lib/prayer-api"
 import type { DailyPrayers } from "@/types/prayer"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+import { getDataDateRange } from "@/lib/accurate-prayer-times"
 
 export function MonthlyPrayerTimes() {
   const [yearlyPrayers, setYearlyPrayers] = useState<DailyPrayers[][]>([])
@@ -29,8 +30,11 @@ export function MonthlyPrayerTimes() {
         // Get current month and only fetch from current month to September (month 9)
         const today = new Date()
         const currentMonth = today.getMonth() + 1 // 1-based month
-        const startMonth = 5 // May (since we're in May 2025 according to the scenario)
-        const endMonth = 9 // September
+
+        // Get the date range for which we have accurate data
+        const { start, end } = getDataDateRange()
+        const startMonth = start.getMonth() + 1 // 1-based month (May)
+        const endMonth = end.getMonth() + 1 // 1-based month (September)
 
         // Fetch months sequentially to avoid overwhelming the API
         for (let i = startMonth - 1; i < endMonth; i++) {
@@ -55,6 +59,9 @@ export function MonthlyPrayerTimes() {
               failed.push(i + 1)
               usedFallback = true
             }
+
+            // Add a small delay between requests to avoid rate limiting
+            await new Promise((resolve) => setTimeout(resolve, 1000))
           } catch (err) {
             console.error(`Error fetching data for month ${i + 1}:`, err)
             failed.push(i + 1)
@@ -62,6 +69,9 @@ export function MonthlyPrayerTimes() {
 
             // Use empty array for failed months
             monthlyData[i] = []
+
+            // Add a longer delay after an error
+            await new Promise((resolve) => setTimeout(resolve, 2000))
           }
         }
 
@@ -168,10 +178,14 @@ export function MonthlyPrayerTimes() {
     )
   }
 
-  // Filter out empty months and only show from current month to September
-  const currentMonth = new Date().getMonth()
+  // Get the date range for which we have accurate data
+  const { start, end } = getDataDateRange()
+  const startMonth = start.getMonth() // 0-based month (May - 4)
+  const endMonth = end.getMonth() // 0-based month (September - 8)
+
+  // Filter out empty months and only show from start month to end month
   const filteredYearlyPrayers = yearlyPrayers.filter((month, index) => {
-    return month.length > 0 && index >= currentMonth && index < 9 // Only show until September (index 8)
+    return month && month.length > 0 && index >= startMonth && index <= endMonth
   })
 
   return (
@@ -199,8 +213,8 @@ export function MonthlyPrayerTimes() {
           )}
 
           {yearlyPrayers.map((monthlyPrayers, monthIndex) => {
-            // Skip months before current month or after September
-            if (monthIndex < currentMonth || monthIndex >= 9 || monthlyPrayers.length === 0) {
+            // Skip months outside our range or empty months
+            if (monthIndex < startMonth || monthIndex > endMonth || !monthlyPrayers || monthlyPrayers.length === 0) {
               return null
             }
 
@@ -209,9 +223,9 @@ export function MonthlyPrayerTimes() {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold">
                     {new Date(2025, monthIndex).toLocaleString("sv-SE", { month: "long" })} 2025
-                    {/*failedMonths.includes(monthIndex + 1) && (
+                    {failedMonths.includes(monthIndex + 1) && (
                       <span className="ml-2 text-sm text-yellow-600 font-normal">(Uppskattade tider)</span>
-                    )*/}
+                    )}
                   </h2>
                   <Button
                     variant="outline"
@@ -251,7 +265,6 @@ export function MonthlyPrayerTimes() {
                                 <div className="text-sm text-gray-500 font-arabic">{day.hijriDate}</div>
                               </TableCell>
                               {day.prayers.map((prayer, prayerIndex) => {
-                                // Only show Jomoa on Fridays for Dhuhr prayer
                                 const isPrayerJomoa = prayer.name === "Dhuhr" && isFriday
 
                                 return (

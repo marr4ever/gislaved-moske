@@ -2,7 +2,7 @@ import { Header } from "@/components/header"
 import { TVClock } from "@/components/tv-clock"
 import { CurrentDayPrayers } from "@/components/current-day-prayers"
 import { RotatingMosqueBackground } from "@/components/rotating-mosque-background"
-import { AccurateTimesNotice } from "@/components/accurate-times-notice"
+import { ScrollingHadith } from "@/components/scrolling-hadith"
 
 export default function TVPage() {
   return (
@@ -15,7 +15,9 @@ export default function TVPage() {
             <TVClock />
             <div className="w-full max-w-7xl">
               <CurrentDayPrayers />
-              <AccurateTimesNotice />
+              <div className="mt-8">
+                <ScrollingHadith />
+              </div>
             </div>
           </div>
         </div>
